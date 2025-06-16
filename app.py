@@ -9,7 +9,9 @@ import tempfile # For handling temporary files
 st.set_page_config(page_title="Ad Scene Capture Tool", layout="wide")
 
 st.title("📸 Facebook Ad Scene Capture")
-st.markdown("Upload your MP4 ad, and Introframe will extract the key scene changes from the first 4 seconds!")
+st.markdown("Upload your MP4 ad, and Introframe will extract the key scene changes from the first 4 seconds!" \
+"" \
+"Leave the sunsitivty on 3,000,000,000. Adjust the seconds to the average video length played")
 
 # --- File Uploader ---
 uploaded_file = st.file_uploader("Choose an MP4 video file", type=["mp4"])
@@ -39,7 +41,7 @@ if uploaded_file is not None:
     # Use columns to control the video's display width
     # The [0.5, 0.5] means two columns of equal width.
     # You can adjust the ratio, e.g., [0.4, 0.6] to make the video column 40% width.
-    video_col, _ = st.columns([0.6, 0.4]) # Video takes 60% of width, second col takes 40%
+    video_col, _ = st.columns([0.5, 0.5]) # Video takes 60% of width, second col takes 40%
 
     with video_col:
         st.video(uploaded_file, format="video/mp4", start_time=0)
