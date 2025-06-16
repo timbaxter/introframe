@@ -112,7 +112,7 @@ if uploaded_file is not None:
                     for i, img_file in enumerate(image_files):
                         with open(os.path.join(output_screenshots_dir, img_file), "rb") as f:
                             img_bytes = f.read()
-                        cols[i % 4].image(img_bytes, caption=f"Scene {i+1}", use_column_width=True)
+                        cols[i % 4].image(img_bytes, caption=f"Scene {i+1}", use_container_width=True)
                 else:
                     st.info("No significant scene changes detected with the current sensitivity.")
 
