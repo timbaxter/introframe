@@ -9,7 +9,7 @@ import tempfile # For handling temporary files
 st.set_page_config(page_title="Ad Scene Capture Tool", layout="wide")
 
 st.title("📸 Facebook Ad Scene Capture")
-st.markdown("Upload your MP4 ad, and I'll extract key scene changes from the first 4 seconds!")
+st.markdown("Upload your MP4 ad, and Introframe will extract the key scene changes from the first 4 seconds!")
 
 # --- File Uploader ---
 uploaded_file = st.file_uploader("Choose an MP4 video file", type=["mp4"])
@@ -23,6 +23,16 @@ threshold = st.slider(
     value=3000000,      # Default from our last successful test
     step=100000,        # Step size for adjustment
     help="Increase this value if you're getting too many images for minor changes. Decrease if you're missing scene changes."
+)
+
+# --- NEW: Screenshot Duration Slider ---
+max_duration_sec = st.slider(
+    "Screenshot Duration (seconds)",
+    min_value=3,
+    max_value=9,
+    value=4, # Default value, currently 4 seconds
+    step=1,
+    help="Adjust the length of the video to analyze for scene changes (3 to 9 seconds)."
 )
 
 if uploaded_file is not None:
@@ -42,9 +52,9 @@ if uploaded_file is not None:
             st.success(f"Video saved temporarily to: {temp_video_path}")
 
             try:
-                # --- Trim Video to First 4 Seconds ---
+                # --- Trim Video to First {max_duration_sec} Seconds ---
                 st.info("Trimming video to the first 4 seconds...")
-                clip = VideoFileClip(temp_video_path).subclip(0, 4)
+                clip = VideoFileClip(temp_video_path).subclip(0, max_duration_sec)
                 clip.write_videofile(temp_trimmed_video_path, codec='libx264', audio=False, preset='veryfast', logger=None)
                 st.success("Video trimmed successfully.")
 
@@ -73,7 +83,7 @@ if uploaded_file is not None:
                     
                     # Update progress bar every 10 frames
                     if frame_count % 10 == 0:
-                        progress_value = min(1.0, frame_count / (clip.fps * 4)) # Assuming 4 seconds
+                        progress_value = min(1.0, frame_count / (clip.fps * max_duration_sec)) #allowing for max duration
                         progress_bar.progress(progress_value)
                         status_text.text(f"Processing frame {frame_count}...")
 
