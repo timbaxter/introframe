@@ -36,7 +36,18 @@ max_duration_sec = st.slider(
 )
 
 if uploaded_file is not None:
-    st.video(uploaded_file, format="video/mp4", start_time=0)
+    # Use columns to control the video's display width
+    # The [0.5, 0.5] means two columns of equal width.
+    # You can adjust the ratio, e.g., [0.4, 0.6] to make the video column 40% width.
+    video_col, _ = st.columns([0.6, 0.4]) # Video takes 60% of width, second col takes 40%
+
+    with video_col:
+        st.video(uploaded_file, format="video/mp4", start_time=0)
+    
+    # You can add content to the second column if you like, e.g.:
+    # with _: # This is the second column
+    #     st.markdown("### Video Preview")
+    #     st.info("The extracted scene screenshots will appear below after processing.")
 
     if st.button("Extract Scene Screenshots"):
         # --- Create temporary directories ---
