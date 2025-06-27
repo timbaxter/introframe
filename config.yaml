@@ -7,4 +7,4 @@ credentials:
         testuser:
             email: test@example.com
             name: Test User
-            password: ${{$2b$12$o/ZsA6p25nfRpmDNgRV0z.1eTPllPivewovuk1jZOsmPcX/CXBP9W}} # You'll generate this
+            password: ${{$2b$12$Eom6SjPVFjmlctPpD/DXTeP93ICWAiZFLl/plj4sfGdZ090OGS9/q}} # You'll generate this
