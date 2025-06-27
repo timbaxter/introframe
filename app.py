@@ -51,19 +51,36 @@ authenticator = stauth.Authenticate(
 gc = None
 users_sheet = None
 
+# ADDED DEBUGGING HERE:
 try:
+    st.sidebar.info("Attempting to connect to Google Sheets...")
     gc = gspread.service_account_from_dict(st.secrets["gcp_service_account"])
+    st.sidebar.success("gspread service account authenticated.") # Debug message
+    
     spreadsheet = gc.open("introFrameAppUsers") # Your Google Sheet Name
+    st.sidebar.success(f"Opened spreadsheet: {spreadsheet.title}") # Debug message
+    
     users_sheet = spreadsheet.worksheet("users") # Your Google Sheet Tab Name
+    st.sidebar.success(f"Selected worksheet: {users_sheet.title}") # Debug message
     
     # Optional debug:
     # st.sidebar.success("Connected to Google Sheets!")
 
+# Changed the exception type to be more specific for actual connection errors
+except gspread.exceptions.SpreadsheetNotFound:
+    st.error("Google Sheet 'introFrameAppUsers' not found. Please ensure the name is exact and the service account has access.")
+    st.stop()
+except gspread.exceptions.WorksheetNotFound:
+    st.error("Worksheet 'users' not found in 'introFrameAppUsers'. Please ensure the tab name is exact.")
+    st.stop()
+except gspread.exceptions.APIError as e: # Catch specific API errors from gspread
+    st.error(f"Google Sheets API error: {e}. Check Google Cloud API permissions and propagation.")
+    st.stop()
 except KeyError:
     st.error("Google Cloud Platform service account secrets ('gcp_service_account') not found. Please set them in Streamlit Cloud's 'Secrets' section.")
     st.stop()
-except Exception as e:
-    st.error(f"Could not connect to Google Sheets. Please check your sheet name, sharing settings, and service account setup. Error: {e}")
+except Exception as e: # Catch any other unexpected errors during connection
+    st.error(f"An unexpected error occurred during Google Sheets setup: {e}")
     st.stop()
 
 
@@ -72,16 +89,29 @@ def load_user_data_from_gsheets():
     """Loads all user records from the Google Sheet into a dictionary."""
     try:
         records = users_sheet.get_all_records()
-        data = {record['username']: {'uses_left': record['uses_left'], 'is_paid': record['is_paid']} for record in records}
-        return data
+        return records_to_dict(records) # Use helper for conversion
     except Exception as e:
         st.error(f"Error loading user data from Google Sheet: {e}")
-        return {} # Return empty dict on error to prevent app crash (though st.stop() should catch initial conn problems)
+        return {} # Return empty dict on error to prevent app crash
+
+def records_to_dict(records):
+    """Converts a list of gspread records to a dictionary keyed by username."""
+    user_dict = {}
+    for record in records:
+        # Ensure 'uses_left' is an int and 'is_paid' is a boolean
+        try:
+            record['uses_left'] = int(record['uses_left'])
+            record['is_paid'] = str(record['is_paid']).lower() == 'true'
+        except (ValueError, KeyError):
+            st.warning(f"Skipping malformed user record: {record}")
+            continue
+        user_dict[record['username']] = {'uses_left': record['uses_left'], 'is_paid': record['is_paid']}
+    return user_dict
 
 def save_user_data_to_gsheets(username, uses_left, is_paid):
     """Updates a user's data in the Google Sheet or appends if new."""
     try:
-        # Get all records to find the row index
+        # Fetch current records to find the row index
         records = users_sheet.get_all_records()
         usernames_list = [r['username'] for r in records]
 
@@ -109,7 +139,15 @@ if authentication_status:
     st.sidebar.title(f"Welcome {name}") # Display welcome message in sidebar
 
     # Load all user data from Google Sheets to get current user's status
-    all_users_data = load_user_data_from_gsheets()
+    # Ensure users_sheet is not None before attempting to load data
+    if users_sheet is not None:
+        all_users_data = load_user_data_from_gsheets()
+    else:
+        st.error("Google Sheets is not initialized. Cannot load user data.")
+        all_users_data = {} # Fallback to empty data to prevent further errors
+        st.stop()
+
+
     current_user_data = all_users_data.get(username, None)
 
     # Initialize user in Google Sheet if they are logging in for the very first time
