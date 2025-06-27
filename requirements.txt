@@ -1,6 +1,6 @@
 streamlit
-streamlit-authenticator==0.4.2
+streamlit-authenticator==0.2.2
 gspread
 pyyaml
 opencv-python
-numpy      
+numpy   
