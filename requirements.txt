@@ -2,6 +2,5 @@ streamlit
 streamlit-authenticator
 gspread
 pyyaml
-moviepy          
-opencv-python    
-numpy            
+opencv-python
+numpy         

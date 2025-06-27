@@ -1,7 +1,6 @@
 import streamlit as st
 import cv2
 import numpy as np
-from moviepy.editor import VideoFileClip
 import os
 import tempfile
 import streamlit_authenticator as stauth
@@ -182,7 +181,6 @@ if authentication_status:
                     # Create temporary directories for each video's processing
                     with tempfile.TemporaryDirectory() as temp_dir:
                         temp_video_path = os.path.join(temp_dir, uploaded_file.name)
-                        temp_trimmed_video_path = os.path.join(temp_dir, f"trimmed_video_{i}.mp4")
                         output_screenshots_dir = os.path.join(temp_dir, f"screenshots_output_{i}")
                         os.makedirs(output_screenshots_dir, exist_ok=True)
 
@@ -192,48 +190,49 @@ if authentication_status:
                         st.info(f"Starting analysis for '{uploaded_file.name}'...")
 
                         try:
-                            # --- YOUR ORIGINAL SCREENSHOT CODE IS NOW HERE ---
-                            # This block contains the core video processing and screenshot saving logic.
+                            # --- MODIFIED: Video Processing using OpenCV ONLY, no MoviePy ---
+                            
+                            # OpenCV Video Capture
+                            cap = cv2.VideoCapture(temp_video_path)
+                            if not cap.isOpened():
+                                st.error(f"Could not open video file '{uploaded_file.name}'. Please check its format or if it's corrupted.")
+                                st.markdown("---")
+                                continue # Skip to the next uploaded file
 
-                            st.text(f"Trimming '{uploaded_file.name}' to the first {max_duration_sec} seconds...")
-                            clip = VideoFileClip(temp_video_path).subclip(0, max_duration_sec)
-                            clip.write_videofile(temp_trimmed_video_path, codec='libx264', audio=False, preset='veryfast', logger=None)
-                            st.success(f"'{uploaded_file.name}' trimmed successfully.")
+                            fps = cap.get(cv2.CAP_PROP_FPS)
+                            total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+                            duration_video = total_frames / fps
+                            
+                            # Determine actual frames to process based on max_duration_sec
+                            frames_to_process = int(fps * max_duration_sec)
+                            if frames_to_process > total_frames:
+                                frames_to_process = total_frames # Don't go beyond actual video length
 
-                            # --- Process Video for Frame Changes ---
-                            st.text(f"Analyzing '{uploaded_file.name}' for scene changes...")
-                            cap = cv2.VideoCapture(temp_trimmed_video_path)
+                            st.text(f"Analyzing '{uploaded_file.name}' (first {min(duration_video, max_duration_sec):.1f} seconds / {frames_to_process} frames)...")
+                            
                             success, prev_frame = cap.read()
                             frame_count = 0
                             saved_count = 0
                             
-                            # Placeholder for displaying progress
                             progress_bar = st.progress(0)
                             status_text = st.empty()
 
-                            if not success:
-                                st.error(f"Could not read '{uploaded_file.name}'. Please check its format or if it's corrupted.")
-                                cap.release()
-                                st.markdown("---") # Add a separator before next video
-                                continue # Skip to the next uploaded file if this one fails
-
-                            while success:
+                            while success and frame_count < frames_to_process: # Only process up to max_duration_sec
                                 success, frame = cap.read()
                                 if not success:
                                     break
                                 
                                 frame_count += 1
                                 
-                                # Update progress bar every 10 frames or so, for smoother visual update
-                                if frame_count % 10 == 0: 
-                                    total_frames_expected = clip.fps * max_duration_sec
-                                    progress_value = min(1.0, frame_count / total_frames_expected)
-                                    progress_bar.progress(progress_value)
-                                    status_text.text(f"Processing frame {frame_count} of '{uploaded_file.name}'...")
+                                # Update progress bar
+                                progress_value = min(1.0, frame_count / frames_to_process)
+                                progress_bar.progress(progress_value)
+                                status_text.text(f"Processing frame {frame_count} of {frames_to_process} for '{uploaded_file.name}'...")
 
-                                if frame_count % 2 != 0:  # Check every 2nd frame
+                                if frame_count == 1: # No previous frame for first one
+                                    prev_frame = frame
                                     continue
-
+                                
                                 # Convert to grayscale for comparison
                                 gray_prev = cv2.cvtColor(prev_frame, cv2.COLOR_BGR2GRAY)
                                 gray_curr = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -247,7 +246,9 @@ if authentication_status:
                                     filename = f"{output_screenshots_dir}/scene_{saved_count:03}.jpg"
                                     cv2.imwrite(filename, frame)
                                     saved_count += 1
-                                    prev_frame = frame # Update prev_frame to the last saved frame to avoid multiple captures for one long change
+                                    # For subsequent comparison, use the frame *after* the change
+                                    # to detect *new* changes, not small variations on the same scene.
+                                    prev_frame = frame 
                                 else:
                                     prev_frame = frame # Always update prev_frame for continuous comparison
 
@@ -257,10 +258,9 @@ if authentication_status:
 
                             st.success(f"✅ Done! Saved {saved_count} scene-change screenshots for '{uploaded_file.name}'.")
 
-                            # --- DISPLAYING RESULTS (Your original code for displaying images) ---
+                            # --- DISPLAYING RESULTS ---
                             if saved_count > 0:
                                 st.markdown("#### Extracted Scenes:")
-                                # Use st.columns for better layout of images
                                 cols = st.columns(4) # Display images in 4 columns per row
                                 image_files = sorted([f for f in os.listdir(output_screenshots_dir) if f.endswith('.jpg')])
                                 
@@ -326,4 +326,3 @@ elif authentication_status == None:
 #         # You'd need to retrieve the newly registered username/email after registration.
 # except Exception as e:
 #     st.error(e)
-
