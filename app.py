@@ -23,11 +23,19 @@ except FileNotFoundError:
     st.error("config.yaml not found. Please create it as per previous instructions.")
     st.stop() # Stop the app if config is missing
 
+# --- Retrieve cookie key from Streamlit secrets ---
+# IMPORTANT: This secret needs to be set in Streamlit Cloud dashboard.
+if "cookie_key" not in st.secrets:
+    st.error("Streamlit 'cookie_key' secret not found. Please set it in Streamlit Cloud's 'Secrets' section.")
+    st.stop()
+cookie_key_from_secrets = st.secrets["cookie_key"]
+
+
 # --- Authenticator Initialization ---
 authenticator = stauth.Authenticate(
     config['credentials'],
     config['cookie']['name'],
-    config['cookie']['key'],
+    cookie_key_from_secrets, # Use the key fetched from st.secrets
     config['cookie']['expiry_days']
 )
 

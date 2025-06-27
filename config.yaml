@@ -1,0 +1,10 @@
+cookie:
+    expiry_days: 30
+    name: your_app_cookie
+credentials:
+    usernames:
+        # Example user (replace with real users later or use registration)
+        testuser:
+            email: test@example.com
+            name: Test User
+            password: ${{$2b$12$o/ZsA6p25nfRpmDNgRV0z.1eTPllPivewovuk1jZOsmPcX/CXBP9W}} # You'll generate this

@@ -1,4 +1,8 @@
 streamlit
-opencv-python
-moviepy==1.0.3
-numpy
+streamlit-authenticator
+gspread
+pyyaml
+opencv-python # If this is a direct dependency
+moviepy       # If this is a direct dependency
+numpy         # If this is a direct dependency
+# Add any other libraries specific to your screenshot logic
