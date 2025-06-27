@@ -317,7 +317,7 @@ if authentication_status:
                             if not is_paid: # Only decrement for free users
                                 save_user_data_to_gsheets(username, uses_left - 1, is_paid)
                                 # Rerun to update uses_left count in the UI for the current user
-                                st.experimental_rerun() 
+                                st.rerun() 
                             else:
                                 st.success("Screenshot generated successfully!") # For paid users, no decrement needed
 
