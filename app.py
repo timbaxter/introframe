@@ -129,8 +129,10 @@ def save_user_data_to_gsheets(username, uses_left, is_paid):
 
 # --- Main Streamlit App Logic (wrapped by authentication) ---
 
-# This line displays the login widget and handles authentication state
-name, authentication_status, username = authenticator.login('Login', 'main')
+# Define the login location explicitly in a variable
+login_location = 'main' 
+name, authentication_status, username = authenticator.login('Login', login_location) # Pass the variable
+
 
 # --- Conditional Content based on Authentication Status ---
 if authentication_status:
@@ -168,7 +170,7 @@ if authentication_status:
         if not is_paid: # Only show uses left if not a paid user
             st.info(f"You have {uses_left} free uses remaining.")
         else:
-            st.success("You have unlimited access! 🎉")
+            st.success("You have unlimited access! �")
 
         # --- File Uploader (Your original code starts here) ---
         uploaded_files = st.file_uploader("Choose MP4 video files", type=["mp4"], accept_multiple_files=True)
