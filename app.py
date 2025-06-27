@@ -129,8 +129,8 @@ def save_user_data_to_gsheets(username, uses_left, is_paid):
 
 # --- Main Streamlit App Logic (wrapped by authentication) ---
 
-# Define the login location explicitly in a variable
-login_location = 'main' 
+# Define the login location explicitly in a variable AND apply .strip()
+login_location = 'main'.strip() 
 name, authentication_status, username = authenticator.login('Login', login_location) # Pass the variable
 
 
