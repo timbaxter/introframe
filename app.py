@@ -17,7 +17,7 @@ st.set_page_config(page_title="Ad Scene Capture Tool", layout="wide", page_icon=
 # No cookie info or preauthorized list needed here, as we manage cookies manually.
 try:
     with open('config.yaml') as file:
-        config = yaml.load(file, Loader=SafeLoader)
+        config = yaml.load(file, Loader=yaml.SafeLoader) # <<< CORRECTED THIS LINE
 except FileNotFoundError:
     st.error("config.yaml not found. Please create it as per previous instructions.")
     st.stop()
@@ -337,7 +337,7 @@ if st.session_state.authenticated:
             st.markdown(f'[<p style="text-align: center; color: white; background-color: #6264ff; padding: 10px; border-radius: 5px; text-decoration: none;">Click Here to Purchase Unlimited Access!</p>]({stripe_payment_link})', unsafe_allow_html=True)
             st.info("You will be redirected to a secure Stripe page to complete your purchase.") # Kept as user-facing info
 
-# Else: User is NOT authenticated, show login and registration forms
+# User is NOT authenticated, show login and registration forms
 else: 
     st.title("Welcome to Ad Scene Capture Tool!")
     st.markdown("Unlock key insights from your video ads in seconds.")
