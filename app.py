@@ -35,7 +35,8 @@ authenticator = stauth.Authenticate(
     config['credentials'],
     config['cookie']['name'],
     cookie_key_from_secrets, # Use the key fetched from st.secrets
-    config['cookie']['expiry_days']
+    config['cookie']['expiry_days'],
+    config['preauthorized'] # <<< ADD THIS LINE to pass the preauthorized config
 )
 
 # --- Google Sheets Setup ---
@@ -344,14 +345,14 @@ elif authentication_status == None:
     st.info("New to the Ad Scene Capture Tool? Register below to get started with a free trial!")
     try:
         # Pass a custom text for the registration form's title
+        # Removed the automatic GSheets update for registration for now due to complexity.
+        # Users register, then get initial uses when they first attempt a feature.
+        # This simplifies the flow and avoids needing a separate hash generation for new users.
+        # It relies on the 'current_user_data is None' block at the top of the app.
         if authenticator.register_user('Register New User', 'main'): 
-            st.success('Registration successful! Please login above with your new username and password.')
-            # IMPORTANT: For Google Sheets persistence for newly registered users:
-            # You would need to manually add this new user's initial data to your Google Sheet.
-            # Streamlit-authenticator adds them to config.yaml, but that's not persistent on Cloud.
-            # For a fully automated registration, you'd integrate GSheets data saving here too.
-            # Example (this is pseudocode and needs careful implementation to get the new username/email):
-            # new_registered_username = authenticator.credentials['usernames'].keys()[-1] # This is a conceptual way to get the latest registered user
-            # save_user_data_to_gsheets(new_registered_username, 3, False) # Give them 3 free uses
+            st.success('Registration successful! Please login above with your new username and password to start your free trial.')
+            # No explicit save_user_data_to_gsheets here. The 'current_user_data is None' block
+            # at the top of the app handles giving new users 3 free uses when they first
+            # attempt to use the tool after registration/login.
     except Exception as e:
         st.error(f"Registration failed: {e}")
