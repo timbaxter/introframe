@@ -51,22 +51,12 @@ authenticator = stauth.Authenticate(
 gc = None
 users_sheet = None
 
-# ADDED DEBUGGING HERE:
+# Removed extensive GSheets debugging messages from sidebar
 try:
-    st.sidebar.info("Attempting to connect to Google Sheets...")
     gc = gspread.service_account_from_dict(st.secrets["gcp_service_account"])
-    st.sidebar.success("gspread service account authenticated.") # Debug message
-    
     spreadsheet = gc.open("introFrameAppUsers") # Your Google Sheet Name
-    st.sidebar.success(f"Opened spreadsheet: {spreadsheet.title}") # Debug message
-    
     users_sheet = spreadsheet.worksheet("users") # Your Google Sheet Tab Name
-    st.sidebar.success(f"Selected worksheet: {users_sheet.title}") # Debug message
     
-    # Optional debug:
-    # st.sidebar.success("Connected to Google Sheets!")
-
-# Changed the exception type to be more specific for actual connection errors
 except gspread.exceptions.SpreadsheetNotFound:
     st.error("Google Sheet 'introFrameAppUsers' not found. Please ensure the name is exact and the service account has access.")
     st.stop()
@@ -129,7 +119,7 @@ def save_user_data_to_gsheets(username, uses_left, is_paid):
 
 # --- Main Streamlit App Logic (wrapped by authentication) ---
 
-# Define the login location explicitly in a variable AND apply .strip()
+# Define the login location explicitly in a variable
 login_location = 'main'.strip() 
 name, authentication_status, username = authenticator.login('Login', login_location) # Pass the variable
 
@@ -170,7 +160,7 @@ if authentication_status:
         if not is_paid: # Only show uses left if not a paid user
             st.info(f"You have {uses_left} free uses remaining.")
         else:
-            st.success("You have unlimited access! �")
+            st.success("You have unlimited access! 🎉")
 
         # --- File Uploader (Your original code starts here) ---
         uploaded_files = st.file_uploader("Choose MP4 video files", type=["mp4"], accept_multiple_files=True)
@@ -227,7 +217,7 @@ if authentication_status:
                         # Save uploaded file to a temporary location
                         with open(temp_video_path, "wb") as f:
                             f.write(uploaded_file.getbuffer())
-                        st.info(f"Starting analysis for '{uploaded_file.name}'...")
+                        # Removed debug info message: st.info(f"Starting analysis for '{uploaded_file.name}'...")
 
                         try:
                             # --- MODIFIED: Video Processing using OpenCV ONLY, no MoviePy ---
@@ -248,7 +238,7 @@ if authentication_status:
                             if frames_to_process > total_frames:
                                 frames_to_process = total_frames # Don't go beyond actual video length
 
-                            st.text(f"Analyzing '{uploaded_file.name}' (first {min(duration_video, max_duration_sec):.1f} seconds / {frames_to_process} frames)...")
+                            # Removed debug text: st.text(f"Analyzing '{uploaded_file.name}' (first {min(duration_video, max_duration_sec):.1f} seconds / {frames_to_process} frames)...")
                             
                             success, prev_frame = cap.read()
                             frame_count = 0
@@ -267,7 +257,7 @@ if authentication_status:
                                 # Update progress bar
                                 progress_value = min(1.0, frame_count / frames_to_process)
                                 progress_bar.progress(progress_value)
-                                status_text.text(f"Processing frame {frame_count} of {frames_to_process} for '{uploaded_file.name}'...")
+                                status_text.text(f"Processing frame {frame_count} of {frames_to_process} for '{uploaded_file.name}'...") # Keep this for live feedback
 
                                 if frame_count == 1: # No previous frame for first one
                                     prev_frame = frame
@@ -287,16 +277,15 @@ if authentication_status:
                                     cv2.imwrite(filename, frame)
                                     saved_count += 1
                                     # For subsequent comparison, use the frame *after* the change
-                                    # to detect *new* changes, not small variations on the same scene.
                                     prev_frame = frame 
                                 else:
                                     prev_frame = frame # Always update prev_frame for continuous comparison
 
                             cap.release()
                             progress_bar.progress(1.0)
-                            status_text.text(f"Analysis complete for '{uploaded_file.name}'!")
+                            status_text.text(f"Analysis complete for '{uploaded_file.name}'!") # Keep this for final feedback
 
-                            st.success(f"✅ Done! Saved {saved_count} scene-change screenshots for '{uploaded_file.name}'.")
+                            st.success(f"✅ Done! Saved {saved_count} scene-change screenshots for '{uploaded_file.name}'.") # Keep this
 
                             # --- DISPLAYING RESULTS ---
                             if saved_count > 0:
@@ -317,7 +306,7 @@ if authentication_status:
                             if not is_paid: # Only decrement for free users
                                 save_user_data_to_gsheets(username, uses_left - 1, is_paid)
                                 # Rerun to update uses_left count in the UI for the current user
-                                st.rerun() 
+                                st.rerun() # Using st.rerun() now, not experimental
                             else:
                                 st.success("Screenshot generated successfully!") # For paid users, no decrement needed
 
@@ -341,7 +330,7 @@ if authentication_status:
         
         if st.button("Purchase Unlimited Access"):
             st.markdown(f'[<p style="text-align: center; color: white; background-color: #6264ff; padding: 10px; border-radius: 5px; text-decoration: none;">Click Here to Purchase Unlimited Access!</p>]({stripe_payment_link})', unsafe_allow_html=True)
-            st.info("You will be redirected to a secure Stripe page to complete your purchase.")
+            st.info("You will be redirected to a secure Stripe page to complete your purchase.") # Kept as user-facing info
 
 
 elif authentication_status == False:
