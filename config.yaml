@@ -14,4 +14,4 @@ credentials:
             name: Tim Baxter (Admin)
             password: $2b$12$i29Cwh60ehACs.MrluFtiOUghGhj0UpVYn1cVl7P6t6r4jiCENvhaE
 
-preauthorized:
+    preauthorized: [] # <<< THIS LINE MUST BE PRESENT AND INDENTED CORRECTLY
