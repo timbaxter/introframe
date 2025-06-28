@@ -160,7 +160,7 @@ if authentication_status:
         if not is_paid: # Only show uses left if not a paid user
             st.info(f"You have {uses_left} free uses remaining.")
         else:
-            st.success("You have unlimited access! 🎉")
+            st.sidebar.success("You have unlimited access! 🎉") # MOVED TO SIDEBAR
 
         # --- File Uploader (Your original code starts here) ---
         uploaded_files = st.file_uploader("Choose MP4 video files", type=["mp4"], accept_multiple_files=True)
