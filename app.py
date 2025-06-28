@@ -17,7 +17,7 @@ st.set_page_config(page_title="Ad Scene Capture Tool", layout="wide", page_icon=
 # No cookie info or preauthorized list needed here, as we manage cookies manually.
 try:
     with open('config.yaml') as file:
-        config = yaml.load(file, Loader=yaml.SafeLoader) # <<< CORRECTED THIS LINE
+        config = yaml.load(file, Loader=SafeLoader)
 except FileNotFoundError:
     st.error("config.yaml not found. Please create it as per previous instructions.")
     st.stop()
@@ -342,11 +342,55 @@ else:
     st.title("Welcome to Ad Scene Capture Tool!")
     st.markdown("Unlock key insights from your video ads in seconds.")
 
-    st.subheader("Login to Your Account")
-    # Login Form
-    with st.form("login_form"):
-        login_username = st.text_input("Username", key="login_username_input_public")
-        login_password = st.text_input("Password", type="password", key="login_password_input_public")
+    st.subheader("New to the Ad Scene Capture Tool? Register for a Free Trial!")
+    # Registration Form
+    with st.form("register_form"):
+        reg_username = st.text_input("Choose a Username", key="reg_username_input")
+        reg_email = st.text_input("Your Email", key="reg_email_input")
+        reg_password = st.text_input("Choose a Password", type="password", key="reg_password_input")
+        reg_password_confirm = st.text_input("Confirm Password", type="password", key="reg_password_confirm_input")
+        register_button = st.form_submit_button("Register")
+
+        if register_button:
+            user_creds = config['credentials']['usernames']
+            if reg_username in user_creds:
+                st.error("Username already exists. Please choose a different one.")
+            elif not reg_username or not reg_email or not reg_password or not reg_password_confirm:
+                st.error("All registration fields are required.")
+            elif reg_password != reg_password_confirm:
+                st.error("Passwords do not match.")
+            else:
+                # Hash the new password
+                hashed_new_password = bcrypt.hashpw(reg_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                
+                # IMPORTANT: Update config dictionary in memory (this is temporary for Streamlit Cloud)
+                # For persistence, we need to save to Google Sheets immediately.
+                # Here, we will append to the config['credentials']['usernames'] in memory
+                # This doesn't save to the file, but allows immediate login in the same session.
+                # The actual persistence for new users is via Google Sheets.
+                config['credentials']['usernames'][reg_username] = {
+                    'email': reg_email,
+                    'name': reg_username, # Use username as display name initially
+                    'password': hashed_new_password
+                }
+                
+                st.success("Registration successful! Attempting to set up your free trial...")
+                
+                # Directly save new user to Google Sheet with 3 uses on registration
+                try:
+                    # Make sure your Google Sheet has an 'email' column (e.g., as column D)
+                    save_user_data_to_gsheets(reg_username, 3, False, reg_email)
+                    st.success("Your free trial account has been set up in our system! Please login above with your new username and password.")
+                except Exception as e:
+                    st.error(f"Could not save registration to Google Sheet: {e}. Please try logging in, and if the issue persists, contact support.")
+
+    st.markdown("---") # Separator between register and login
+
+    st.subheader("Already have an account? Login here!")
+    # Login Form (now below registration)
+    with st.form("login_form_below_register"): # Changed key to avoid conflict
+        login_username = st.text_input("Username", key="login_username_input_below")
+        login_password = st.text_input("Password", type="password", key="login_password_input_below")
         login_button = st.form_submit_button("Login")
 
         if login_button:
@@ -373,45 +417,4 @@ else:
                         st.error("Incorrect username or password.")
             else:
                 st.error("Incorrect username or password.")
-
-    st.markdown("---") # Separator between login and register
-
-    st.subheader("New to the Ad Scene Capture Tool? Register for a Free Trial!")
-    # Registration Form
-    with st.form("register_form"):
-        reg_username = st.text_input("Choose a Username", key="reg_username_input")
-        reg_email = st.text_input("Your Email", key="reg_email_input")
-        reg_password = st.text_input("Choose a Password", type="password", key="reg_password_input")
-        reg_password_confirm = st.text_input("Confirm Password", type="password", key="reg_password_confirm_input")
-        register_button = st.form_submit_button("Register")
-
-        if register_button:
-            user_creds = config['credentials']['usernames']
-            if reg_username in user_creds:
-                st.error("Username already exists. Please choose a different one.")
-            elif not reg_username or not reg_email or not reg_password or not reg_password_confirm:
-                st.error("All registration fields are required.")
-            elif reg_password != reg_password_confirm:
-                st.error("Passwords do not match.")
-            else:
-                # Hash the new password
-                hashed_new_password = bcrypt.hashpw(reg_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-                
-                # IMPORTANT: Update config dictionary in memory (this is temporary for Streamlit Cloud)
-                # For persistence, we need to save to Google Sheets immediately.
-                config['credentials']['usernames'][reg_username] = {
-                    'email': reg_email,
-                    'name': reg_username, # Use username as display name initially
-                    'password': hashed_new_password
-                }
-                
-                st.success("Registration successful! Attempting to set up your free trial...")
-                
-                # Directly save new user to Google Sheet with 3 uses on registration
-                try:
-                    # Make sure your Google Sheet has an 'email' column (e.g., as column D)
-                    save_user_data_to_gsheets(reg_username, 3, False, reg_email)
-                    st.success("Your free trial account has been set up in our system! Please login above with your new username and password.")
-                except Exception as e:
-                    st.error(f"Could not save registration to Google Sheet: {e}. Please try logging in, and if the issue persists, contact support.")
 
