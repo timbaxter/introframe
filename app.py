@@ -31,12 +31,16 @@ cookie_key_from_secrets = st.secrets["cookie_key"]
 
 
 # --- Authenticator Initialization ---
+# Ensure preauthorized list is always provided, even if empty
+# Corrected: Use .get() with a default empty list to prevent KeyError or NoneType
+preauthorized_users = config['credentials'].get('preauthorized', []) # <<< CORRECTED THIS LINE
+
 authenticator = stauth.Authenticate(
     config['credentials'],
     config['cookie']['name'],
     cookie_key_from_secrets, # Use the key fetched from st.secrets
     config['cookie']['expiry_days'],
-    config['credentials']['preauthorized'] # <<< CORRECTED THIS LINE
+    preauthorized_users # Pass the safely retrieved preauthorized list
 )
 
 # --- Google Sheets Setup ---
@@ -350,7 +354,7 @@ elif authentication_status == None:
         # This simplifies the flow and avoids needing a separate hash generation for new users.
         # It relies on the 'current_user_data is None' block at the top of the app.
         if authenticator.register_user('Register New User', 'main'): 
-            st.success('Registration successful! Please login above with your new username and password.')
+            st.success('Registration successful! Please login above with your new username and password to start your free trial.')
             # No explicit save_user_data_to_gsheets here. The 'current_user_data is None' block
             # at the top of the app handles giving new users 3 free uses when they first
             # attempt to use the tool after registration/login.
