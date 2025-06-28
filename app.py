@@ -160,7 +160,7 @@ if authentication_status:
         if not is_paid: # Only show uses left if not a paid user
             st.info(f"You have {uses_left} free uses remaining.")
         else:
-            st.sidebar.success("You have unlimited access! 🎉") # MOVED TO SIDEBAR
+            st.sidebar.markdown("<p style='color: #28a745; font-weight: bold;'>You have unlimited access! 🎉</p>", unsafe_allow_html=True) # Changed from st.sidebar.success to st.sidebar.markdown for no green background
 
         # --- File Uploader (Your original code starts here) ---
         uploaded_files = st.file_uploader("Choose MP4 video files", type=["mp4"], accept_multiple_files=True)
@@ -340,19 +340,18 @@ elif authentication_status == False:
 elif authentication_status == None:
     # User is not logged in yet
     st.warning('Please enter your username and password to access the tool.')
-    st.info("No account? Use the login credentials from your `config.yaml` file for now (e.g., username: `admin_user`, password: `your_secure_password`).")
-
-# --- Optional: User Registration ---
-# Uncomment this block if you want to allow self-registration.
-# Be aware: If you enable this and use config.yaml for storage, new users
-# will be written to config.yaml. For deployed apps, this file is generally read-only
-# or ephemeral on Streamlit Cloud. For dynamic registration, you'd need to modify this
-# to save directly to your Google Sheet after successful registration.
-# try:
-#     if authenticator.register_user('Register new user', 'main'):
-#         st.success('User registered successfully! Please login.')
-#         # NOTE: For Google Sheets persistence, you would typically add logic here
-#         # to also add the newly registered user to your Google Sheet with initial uses.
-#         # You'd need to retrieve the newly registered username/email after registration.
-# except Exception as e:
-#     st.error(e)
+    # Added a signup button/section for new users
+    st.info("New to the Ad Scene Capture Tool? Register below to get started with a free trial!")
+    try:
+        # Pass a custom text for the registration form's title
+        if authenticator.register_user('Register New User', 'main'): 
+            st.success('Registration successful! Please login above with your new username and password.')
+            # IMPORTANT: For Google Sheets persistence for newly registered users:
+            # You would need to manually add this new user's initial data to your Google Sheet.
+            # Streamlit-authenticator adds them to config.yaml, but that's not persistent on Cloud.
+            # For a fully automated registration, you'd integrate GSheets data saving here too.
+            # Example (this is pseudocode and needs careful implementation to get the new username/email):
+            # new_registered_username = authenticator.credentials['usernames'].keys()[-1] # This is a conceptual way to get the latest registered user
+            # save_user_data_to_gsheets(new_registered_username, 3, False) # Give them 3 free uses
+    except Exception as e:
+        st.error(f"Registration failed: {e}")
