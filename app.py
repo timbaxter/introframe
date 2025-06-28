@@ -17,7 +17,7 @@ st.set_page_config(page_title="Ad Scene Capture Tool", layout="wide", page_icon=
 # No cookie info or preauthorized list needed here, as we manage cookies manually.
 try:
     with open('config.yaml') as file:
-        config = yaml.load(file, Loader=SafeLoader)
+        config = yaml.load(file, Loader=yaml.SafeLoader) # <<< CORRECTED THIS LINE TO yaml.SafeLoader
 except FileNotFoundError:
     st.error("config.yaml not found. Please create it as per previous instructions.")
     st.stop()
@@ -417,4 +417,3 @@ else:
                         st.error("Incorrect username or password.")
             else:
                 st.error("Incorrect username or password.")
-
