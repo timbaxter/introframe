@@ -3,64 +3,35 @@ import cv2
 import numpy as np
 import os
 import tempfile
-import streamlit_authenticator as stauth
 import yaml
-from yaml.loader import SafeLoader
-import gspread # For Google Sheets integration
-import time # For simulating delays
+import gspread
+import time
+import bcrypt # Import bcrypt for hashing/checking passwords
 
 # --- Streamlit App Interface (General Config) ---
 st.set_page_config(page_title="Ad Scene Capture Tool", layout="wide", page_icon="📸")
 
 
 # --- Configuration from config.yaml ---
-# Ensure config.yaml is in the same directory as app.py
+# config.yaml now ONLY contains usernames and their hashed passwords.
+# No cookie info or preauthorized list needed here, as we manage cookies manually.
 try:
     with open('config.yaml') as file:
         config = yaml.load(file, Loader=SafeLoader)
 except FileNotFoundError:
     st.error("config.yaml not found. Please create it as per previous instructions.")
-    st.stop() # Stop the app if config is missing
-
-# --- Retrieve cookie key from Streamlit secrets ---
-# IMPORTANT: This secret needs to be set in Streamlit Cloud dashboard.
-if "cookie_key" not in st.secrets:
-    st.error("Streamlit 'cookie_key' secret not found. Please set it in Streamlit Cloud's 'Secrets' section.")
     st.stop()
-cookie_key_from_secrets = st.secrets["cookie_key"]
 
-
-# --- Authenticator Initialization ---
-# Ensure preauthorized list is always provided, even if empty
-# Corrected: Use .get() with a default empty list to prevent KeyError or NoneType
-preauthorized_users = config['credentials'].get('preauthorized', []) # <<< CORRECTED THIS LINE
-
-authenticator = stauth.Authenticate(
-    config['credentials'],
-    config['cookie']['name'],
-    cookie_key_from_secrets, # Use the key fetched from st.secrets
-    config['cookie']['expiry_days'],
-    preauthorized_users # Pass the safely retrieved preauthorized list
-)
 
 # --- Google Sheets Setup ---
-# This part connects to your Google Sheet for user data persistence.
-# It assumes you have:
-# 1. Created a Google Sheet named "introFrameAppUsers" (as provided by you)
-#    with columns: "username", "uses_left", "is_paid"
-# 2. Created a Google Cloud Project and Service Account.
-# 3. Enabled Google Sheets API and Google Drive API for that project.
-# 4. Shared your Google Sheet with the service account's email (as editor).
-# 5. Added the service account's JSON key content to Streamlit Cloud's Secrets
-#    under the key 'gcp_service_account'.
+# Your existing Google Sheets setup remains the same.
 gc = None
 users_sheet = None
 
-# ALL sidebar debugging messages for GSheets connection have been removed here.
 try:
     gc = gspread.service_account_from_dict(st.secrets["gcp_service_account"])
-    spreadsheet = gc.open("introFrameAppUsers") # Your Google Sheet Name
-    users_sheet = spreadsheet.worksheet("users") # Your Google Sheet Tab Name
+    spreadsheet = gc.open("introFrameAppUsers") 
+    users_sheet = spreadsheet.worksheet("users") 
     
 except gspread.exceptions.SpreadsheetNotFound:
     st.error("Google Sheet 'introFrameAppUsers' not found. Please ensure the name is exact and the service account has access.")
@@ -68,13 +39,13 @@ except gspread.exceptions.SpreadsheetNotFound:
 except gspread.exceptions.WorksheetNotFound:
     st.error("Worksheet 'users' not found in 'introFrameAppUsers'. Please ensure the tab name is exact.")
     st.stop()
-except gspread.exceptions.APIError as e: # Catch specific API errors from gspread
+except gspread.exceptions.APIError as e:
     st.error(f"Google Sheets API error: {e}. Check Google Cloud API permissions and propagation.")
     st.stop()
 except KeyError:
     st.error("Google Cloud Platform service account secrets ('gcp_service_account') not found. Please set them in Streamlit Cloud's 'Secrets' section.")
     st.stop()
-except Exception as e: # Catch any other unexpected errors during connection
+except Exception as e:
     st.error(f"An unexpected error occurred during Google Sheets setup: {e}")
     st.stop()
 
@@ -84,56 +55,80 @@ def load_user_data_from_gsheets():
     """Loads all user records from the Google Sheet into a dictionary."""
     try:
         records = users_sheet.get_all_records()
-        return records_to_dict(records) # Use helper for conversion
+        user_data_dict = {}
+        for record in records:
+            try:
+                user_data_dict[record['username']] = {
+                    'uses_left': int(record['uses_left']),
+                    'is_paid': str(record['is_paid']).lower() == 'true',
+                    'email': record.get('email', '') # Ensure email is pulled if it exists
+                }
+            except (ValueError, KeyError) as e:
+                st.warning(f"Skipping malformed user record in Google Sheet: {record} - Error: {e}")
+                continue
+        return user_data_dict
     except Exception as e:
         st.error(f"Error loading user data from Google Sheet: {e}")
-        return {} # Return empty dict on error to prevent app crash
+        return {}
 
-def records_to_dict(records):
-    """Converts a list of gspread records to a dictionary keyed by username."""
-    user_dict = {}
-    for record in records:
-        # Ensure 'uses_left' is an int and 'is_paid' is a boolean
-        try:
-            record['uses_left'] = int(record['uses_left'])
-            record['is_paid'] = str(record['is_paid']).lower() == 'true'
-        except (ValueError, KeyError):
-            st.warning(f"Skipping malformed user record: {record}")
-            continue
-        user_dict[record['username']] = {'uses_left': record['uses_left'], 'is_paid': record['is_paid']}
-    return user_dict
-
-def save_user_data_to_gsheets(username, uses_left, is_paid):
+def save_user_data_to_gsheets(username, uses_left, is_paid, email):
     """Updates a user's data in the Google Sheet or appends if new."""
     try:
-        # Fetch current records to find the row index
         records = users_sheet.get_all_records()
         usernames_list = [r['username'] for r in records]
 
         if username in usernames_list:
-            # User exists, update the row
-            row_index = usernames_list.index(username) + 2 # +2 because gspread is 1-indexed and has a header row
-            users_sheet.update_cell(row_index, 2, uses_left) # Column B is 'uses_left'
-            users_sheet.update_cell(row_index, 3, is_paid)   # Column C is 'is_paid'
+            row_index = usernames_list.index(username) + 2
+            users_sheet.update_cell(row_index, 2, uses_left) # uses_left is Column B
+            users_sheet.update_cell(row_index, 3, is_paid)   # is_paid is Column C
+            # Assuming 'email' is in Column D if you want to store it there later
+            # users_sheet.update_cell(row_index, 4, email) 
         else:
-            # New user, append a new row with initial values
-            users_sheet.append_row([username, uses_left, is_paid])
+            # New user, append a new row
+            users_sheet.append_row([username, uses_left, is_paid, email]) # Add email if you plan to store it
     except Exception as e:
         st.error(f"Error saving user data to Google Sheet: {e}")
 
 
-# --- Main Streamlit App Logic (wrapped by authentication) ---
+# --- Custom Login/Registration Logic ---
 
-# Define the login location explicitly in a variable
-login_location = 'main'.strip() 
-name, authentication_status, username = authenticator.login('Login', login_location) # Pass the variable
+# Initialize session state for login/auth
+if 'authenticated' not in st.session_state:
+    st.session_state.authenticated = False
+if 'username' not in st.session_state:
+    st.session_state.username = None
+if 'current_view' not in st.session_state:
+    st.session_state.current_view = 'login' # 'login' or 'register'
+
+def hash_password(password):
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+def check_password(password, hashed_password):
+    return bcrypt.checkpw(password.encode('utf-8'), hashed_password.encode('utf-8'))
 
 
-# --- Conditional Content based on Authentication Status ---
-if authentication_status:
-    # User is logged in
-    authenticator.logout('Logout', 'sidebar') # Display logout button in sidebar
-    st.sidebar.title(f"Welcome {name}") # Display welcome message in sidebar
+# --- Main App Flow ---
+
+# If user is authenticated, show the main application
+if st.session_state.authenticated:
+    username = st.session_state.username
+    # config['credentials']['usernames'] is loaded from config.yaml
+    # Check if username exists in loaded config data before accessing
+    if username in config['credentials']['usernames']:
+        name = config['credentials']['usernames'][username].get('name', username) # Get display name
+    else:
+        # This case handles if a user logs in but their data isn't in config.yaml
+        # (e.g., if config.yaml was reset or they registered only to GSheets)
+        # For simplicity, we'll just use username as name.
+        name = username 
+
+    # Display logout button in sidebar
+    with st.sidebar:
+        st.title(f"Welcome {name}") 
+        if st.button("Logout"):
+            st.session_state.authenticated = False
+            st.session_state.username = None
+            st.rerun()
 
     # Load all user data from Google Sheets to get current user's status
     # Ensure users_sheet is not None before attempting to load data
@@ -148,10 +143,14 @@ if authentication_status:
     current_user_data = all_users_data.get(username, None)
 
     # Initialize user in Google Sheet if they are logging in for the very first time
+    # (This catches users registered manually or through the new form if GSheets save failed on registration)
     if current_user_data is None:
         initial_uses = 3
-        save_user_data_to_gsheets(username, initial_uses, False) # Give 3 free uses
-        current_user_data = {'uses_left': initial_uses, 'is_paid': False} # Update in-memory for current session
+        # Assuming your Google Sheet has an 'email' column or similar to store this
+        # Otherwise, adjust save_user_data_to_gsheets to match your sheet structure.
+        user_email_for_gsheet = config['credentials']['usernames'][username].get('email', '')
+        save_user_data_to_gsheets(username, initial_uses, False, user_email_for_gsheet) 
+        current_user_data = {'uses_left': initial_uses, 'is_paid': False}
 
     uses_left = current_user_data['uses_left']
     is_paid = current_user_data['is_paid']
@@ -338,25 +337,81 @@ if authentication_status:
             st.markdown(f'[<p style="text-align: center; color: white; background-color: #6264ff; padding: 10px; border-radius: 5px; text-decoration: none;">Click Here to Purchase Unlimited Access!</p>]({stripe_payment_link})', unsafe_allow_html=True)
             st.info("You will be redirected to a secure Stripe page to complete your purchase.") # Kept as user-facing info
 
+# Else: User is NOT authenticated, show login and registration forms
+else: 
+    st.title("Welcome to Ad Scene Capture Tool!")
+    st.markdown("Unlock key insights from your video ads in seconds.")
 
-elif authentication_status == False:
-    # User entered incorrect credentials
-    st.error('Username/password is incorrect')
-elif authentication_status == None:
-    # User is not logged in yet
-    st.warning('Please enter your username and password to access the tool.')
-    # Added a signup button/section for new users
-    st.info("New to the Ad Scene Capture Tool? Register below to get started with a free trial!")
-    try:
-        # Pass a custom text for the registration form's title
-        # Removed the automatic GSheets update for registration for now due to complexity.
-        # Users register, then get initial uses when they first attempt a feature.
-        # This simplifies the flow and avoids needing a separate hash generation for new users.
-        # It relies on the 'current_user_data is None' block at the top of the app.
-        if authenticator.register_user('Register New User', 'main'): 
-            st.success('Registration successful! Please login above with your new username and password to start your free trial.')
-            # No explicit save_user_data_to_gsheets here. The 'current_user_data is None' block
-            # at the top of the app handles giving new users 3 free uses when they first
-            # attempt to use the tool after registration/login.
-    except Exception as e:
-        st.error(f"Registration failed: {e}")
+    st.subheader("Login to Your Account")
+    # Login Form
+    with st.form("login_form"):
+        login_username = st.text_input("Username", key="login_username_input_public")
+        login_password = st.text_input("Password", type="password", key="login_password_input_public")
+        login_button = st.form_submit_button("Login")
+
+        if login_button:
+            # Load users from config.yaml for login
+            user_creds = config['credentials']['usernames']
+            if login_username in user_creds:
+                stored_hashed_password = user_creds[login_username]['password']
+                # Check if the stored password is a hash (starts with $2b$12$)
+                if stored_hashed_password.startswith('$2b$12$'):
+                    if bcrypt.checkpw(login_password.encode('utf-8'), stored_hashed_password.encode('utf-8')):
+                        st.session_state.authenticated = True
+                        st.session_state.username = login_username
+                        st.success("Logged in successfully! Rerunning app...")
+                        st.rerun() # Rerun to display main app
+                    else:
+                        st.error("Incorrect username or password.")
+                else: # Fallback for non-hashed passwords if you have any in config.yaml for testing
+                    if login_password == stored_hashed_password:
+                        st.session_state.authenticated = True
+                        st.session_state.username = login_username
+                        st.success("Logged in successfully! Rerunning app...")
+                        st.rerun()
+                    else:
+                        st.error("Incorrect username or password.")
+            else:
+                st.error("Incorrect username or password.")
+
+    st.markdown("---") # Separator between login and register
+
+    st.subheader("New to the Ad Scene Capture Tool? Register for a Free Trial!")
+    # Registration Form
+    with st.form("register_form"):
+        reg_username = st.text_input("Choose a Username", key="reg_username_input")
+        reg_email = st.text_input("Your Email", key="reg_email_input")
+        reg_password = st.text_input("Choose a Password", type="password", key="reg_password_input")
+        reg_password_confirm = st.text_input("Confirm Password", type="password", key="reg_password_confirm_input")
+        register_button = st.form_submit_button("Register")
+
+        if register_button:
+            user_creds = config['credentials']['usernames']
+            if reg_username in user_creds:
+                st.error("Username already exists. Please choose a different one.")
+            elif not reg_username or not reg_email or not reg_password or not reg_password_confirm:
+                st.error("All registration fields are required.")
+            elif reg_password != reg_password_confirm:
+                st.error("Passwords do not match.")
+            else:
+                # Hash the new password
+                hashed_new_password = bcrypt.hashpw(reg_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                
+                # IMPORTANT: Update config dictionary in memory (this is temporary for Streamlit Cloud)
+                # For persistence, we need to save to Google Sheets immediately.
+                config['credentials']['usernames'][reg_username] = {
+                    'email': reg_email,
+                    'name': reg_username, # Use username as display name initially
+                    'password': hashed_new_password
+                }
+                
+                st.success("Registration successful! Attempting to set up your free trial...")
+                
+                # Directly save new user to Google Sheet with 3 uses on registration
+                try:
+                    # Make sure your Google Sheet has an 'email' column (e.g., as column D)
+                    save_user_data_to_gsheets(reg_username, 3, False, reg_email)
+                    st.success("Your free trial account has been set up in our system! Please login above with your new username and password.")
+                except Exception as e:
+                    st.error(f"Could not save registration to Google Sheet: {e}. Please try logging in, and if the issue persists, contact support.")
+
