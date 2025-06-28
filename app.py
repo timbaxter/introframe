@@ -51,7 +51,7 @@ authenticator = stauth.Authenticate(
 gc = None
 users_sheet = None
 
-# Removed extensive GSheets debugging messages from sidebar
+# ALL sidebar debugging messages for GSheets connection have been removed here.
 try:
     gc = gspread.service_account_from_dict(st.secrets["gcp_service_account"])
     spreadsheet = gc.open("introFrameAppUsers") # Your Google Sheet Name
@@ -277,6 +277,7 @@ if authentication_status:
                                     cv2.imwrite(filename, frame)
                                     saved_count += 1
                                     # For subsequent comparison, use the frame *after* the change
+                                    # to detect *new* changes, not small variations on the same scene.
                                     prev_frame = frame 
                                 else:
                                     prev_frame = frame # Always update prev_frame for continuous comparison
