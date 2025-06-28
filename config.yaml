@@ -8,3 +8,8 @@ credentials:
             email: test@example.com
             name: Test User
             password: $2b$12$Eom6SjPVFjmlctPpD/DXTeP93ICWAiZFLl/plj4sfGdZ090OGS9/q # You'll generate this
+
+        timhbaxter: # <<< ADD THIS NEW USER ENTRY
+            email: timhbaxter@gmail.com
+            name: Tim Baxter (Admin)
+            password: $2b$12$i29Cwh60ehACs.MrluFtiOUghGhj0UpVYn1cVl7P6t6r4jiCENvhaE
