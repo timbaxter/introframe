@@ -156,7 +156,7 @@ if st.session_state.authenticated:
     is_paid = current_user_data['is_paid']
 
     # --- Main Application Title & Description ---
-    st.title("📸 Facebook Ad Scene Capture")
+    st.title("📸 Intro Frame")
     st.markdown("Upload your MP4 ad(s), and I'll extract key scene changes from the first few seconds!")
 
     # --- Conditional Access (Free Trial / Paid Access) ---
