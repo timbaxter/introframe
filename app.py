@@ -339,7 +339,7 @@ if st.session_state.authenticated:
 
 # User is NOT authenticated, show login and registration forms
 else: 
-    st.title("Welcome to Ad Scene Capture Tool!")
+    st.title("Welcome to Intro Frame!")
     st.markdown("Unlock key insights from your video ads in seconds.")
 
     st.subheader("New to the Ad Scene Capture Tool? Register for a Free Trial!")
