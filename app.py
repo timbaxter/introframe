@@ -331,7 +331,7 @@ if st.session_state.authenticated:
         # --- Purchase Button (for Stripe integration) ---
         # Replace 'https://buy.stripe.com/YOUR_PAYMENT_LINK' with the actual payment link from Stripe.
         # This link will be created in Phase 3.
-        stripe_payment_link = "https://buy.stripe.com/4gM28qa6lb5xcWO5Gi38400" # Your Stripe Payment Link
+        stripe_payment_link = "https://buy.stripe.com/4gM8wO5Q50qT6yq6Km38401" # Your Stripe Payment Link
         
         if st.button("Purchase Unlimited Access"):
             st.markdown(f'[<p style="text-align: center; color: white; background-color: #6264ff; padding: 10px; border-radius: 5px; text-decoration: none;">Click Here to Purchase Unlimited Access!</p>]({stripe_payment_link})', unsafe_allow_html=True)
