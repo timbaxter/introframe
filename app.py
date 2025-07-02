@@ -342,7 +342,7 @@ else:
     st.title("Welcome to Intro Frame!")
     st.markdown("Unlock key insights from your video ads in seconds.")
 
-    st.subheader("New to the Ad Scene Capture Tool? Register for a Free Trial!")
+    st.subheader("Sign up for a Free Trial")
     # Registration Form
     with st.form("register_form"):
         reg_username = st.text_input("Choose a Username", key="reg_username_input")
