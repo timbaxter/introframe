@@ -1,3 +1,4 @@
 libgl1
 libxext6
 ffmpeg
+libglib2.0-0
