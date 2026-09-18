@@ -15,13 +15,17 @@ st.markdown("Upload your MP4 ad(s), and I'll extract key scene changes from the 
 uploaded_files = st.file_uploader("Choose MP4 video files", type=["mp4"], accept_multiple_files=True)
 
 # --- Sensitivity Slider (Threshold) ---
+# Note: this is now the AVERAGE per-pixel brightness difference (0-255 scale),
+# not the summed difference across the whole frame. The old version summed every
+# pixel's difference, which scales with resolution and made the slider's range
+# meaningless for typical HD video (nearly every frame cleared even the max value).
 threshold = st.slider(
     "Adjust Sensitivity (Higher = Less Sensitive)",
-    min_value=100000,
-    max_value=10000000,
-    value=3000000,
-    step=100000,
-    help="Increase this value if you're getting too many images for minor changes. Decrease if you're missing scene changes."
+    min_value=1.0,
+    max_value=50.0,
+    value=8.0,
+    step=0.5,
+    help="This is the average brightness change per pixel between frames (0-255 scale). Increase this value if you're getting too many images for minor changes. Decrease if you're missing scene changes."
 )
 
 # --- Screenshot Duration Slider ---
@@ -105,9 +109,9 @@ if uploaded_files:
                         gray_curr = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
                         diff = cv2.absdiff(gray_prev, gray_curr)
-                        total_pixel_difference = np.sum(diff)
+                        avg_pixel_difference = np.mean(diff)
 
-                        if total_pixel_difference > threshold:
+                        if avg_pixel_difference > threshold:
                             filename = f"{output_screenshots_dir}/scene_{saved_count:03}.jpg"
                             cv2.imwrite(filename, frame)
                             saved_count += 1
